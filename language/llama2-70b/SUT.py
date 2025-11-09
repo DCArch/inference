@@ -21,6 +21,11 @@ from pathlib import Path
 import mlperf_loadgen as lg
 from dataset import Dataset
 
+# DCSim hooks
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'dcsim_hooks'))
+import dcsim_hooks
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("Llama-70B-SUT")
 
@@ -144,6 +149,9 @@ class SUT:
         self.sample_counter = 0
         self.sample_counter_lock = threading.Lock()
 
+        # DCSim hook control
+        self.dcsim_hooks_active = False
+
     def start(self):
         # Create worker threads
         for j in range(self.num_workers):
@@ -151,7 +159,20 @@ class SUT:
             worker.start()
             self.worker_threads[j] = worker
 
+        # Model loaded, workers ready - activate simulation
+        log.info("DCSim: Starting simulation region")
+        dcsim_hooks.start_global_roi()
+        self.dcsim_hooks_active = True
+        log.info("DCSim: Simulation active")
+
     def stop(self):
+        # End simulation before cleanup
+        if self.dcsim_hooks_active:
+            log.info("DCSim: Ending simulation region")
+            dcsim_hooks.end_global_roi()
+            self.dcsim_hooks_active = False
+            log.info("DCSim: Simulation ended")
+
         for _ in range(self.num_workers):
             self.query_queue.put(None)
 

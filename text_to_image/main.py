@@ -499,6 +499,11 @@ def main():
         post_proc.save_images(saved_images_ids, ds)
 
     runner.finish()
+
+    # End simulation before cleanup
+    if hasattr(backend, 'unload'):
+        backend.unload()
+
     lg.DestroyQSL(qsl)
     lg.DestroySUT(sut)
 

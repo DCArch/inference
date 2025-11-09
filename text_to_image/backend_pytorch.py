@@ -7,6 +7,11 @@ from diffusers import StableDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 import threading
 
+# DCSim hooks
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'dcsim_hooks'))
+import dcsim_hooks
+
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("backend-pytorch")
 
@@ -48,6 +53,9 @@ class BackendPytorch(backend.Backend):
         self.negative_prompt = negative_prompt
         self.max_length_neg_prompt = 77
         self.batch_size = batch_size
+
+        # DCSim hook control
+        self.dcsim_hooks_active = False
 
     def version(self):
         return torch.__version__
@@ -107,7 +115,26 @@ class BackendPytorch(backend.Backend):
             truncation=True,
             return_tensors="pt",
         )
+
+        # All models loaded - activate simulation
+        log.info("="*60)
+        log.info("DCSim: All models loaded (UNet, encoders, VAE), starting simulation")
+        dcsim_hooks.start_global_roi()
+        self.dcsim_hooks_active = True
+        log.info("DCSim: Simulation active")
+        log.info("="*60)
+
         return self
+
+    def unload(self):
+        """Cleanup - end simulation"""
+        if self.dcsim_hooks_active:
+            log.info("="*60)
+            log.info("DCSim: Ending simulation region")
+            dcsim_hooks.end_global_roi()
+            self.dcsim_hooks_active = False
+            log.info("DCSim: Simulation ended")
+            log.info("="*60)
 
     def convert_prompt(self, prompt, tokenizer):
         tokens = tokenizer.tokenize(prompt)

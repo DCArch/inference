@@ -825,6 +825,11 @@ def main():
     )
 
     runner.finish()
+
+    # End simulation before cleanup
+    if hasattr(backend, 'unload'):
+        backend.unload()
+
     lg.DestroyQSL(qsl)
     lg.DestroySUT(sut)
     # If multiple subprocesses are running the model send a signal to stop them

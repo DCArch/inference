@@ -7,6 +7,11 @@ import torch
 import backend
 import numpy as np
 
+# DCSim hooks
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'dcsim_hooks'))
+import dcsim_hooks
+
 from torchrec import EmbeddingBagCollection
 from torchrec.models.dlrm import DLRM, DLRM_DCN, DLRMTrain
 from torchrec.datasets.criteo import DEFAULT_CAT_NAMES, DEFAULT_INT_NAMES
@@ -72,6 +77,9 @@ class BackendPytorchNative(backend.Backend):
             # os.environ["WORLD_SIZE"] = "8"
             self.device: torch.device = torch.device("cpu")
             self.dist_backend = "gloo"
+
+        # DCSim hook control
+        self.dcsim_hooks_active = False
 
     def version(self):
         return torch.__version__
@@ -144,7 +152,26 @@ class BackendPytorchNative(backend.Backend):
             # for k, v in d.items():
             #     print(k, v)
         self.model.eval()
+
+        # All models and embeddings loaded - activate simulation
+        print("="*60)
+        print("DCSim: Embeddings and model loaded, starting simulation")
+        dcsim_hooks.start_global_roi()
+        self.dcsim_hooks_active = True
+        print("DCSim: Simulation active")
+        print("="*60)
+
         return self
+
+    def unload(self):
+        """Cleanup - end simulation"""
+        if self.dcsim_hooks_active:
+            print("="*60)
+            print("DCSim: Ending simulation region")
+            dcsim_hooks.end_global_roi()
+            self.dcsim_hooks_active = False
+            print("DCSim: Simulation ended")
+            print("="*60)
 
     def predict(self, samples, ids=None):
         outputs = []
