@@ -5,9 +5,87 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFERENCE_DIR="${SCRIPT_DIR}"
 
 echo "======================================================================"
-echo "MLPerf Inference Benchmark Download Script"
+echo "MLPerf Inference Benchmark Setup Script"
 echo "======================================================================"
 echo ""
+
+# ==============================================================================
+# Python Virtual Environment Setup
+# ==============================================================================
+echo "======================================================================"
+echo "Setting up Python virtual environment..."
+echo "======================================================================"
+
+# 1. Fresh venv setup
+rm -rf ~/mlperf_venv
+python3 -m venv ~/mlperf_venv
+source ~/mlperf_venv/bin/activate
+
+# 2. Create empty pip config to override Compute Canada's
+cat > ~/mlperf_venv/pip.conf << 'EOF'
+[global]
+find-links = 
+disable-pip-version-check = false
+
+[install]
+find-links = 
+constraint = 
+only-binary = 
+prefer-binary = false
+EOF
+
+# 3. Set config and add to activate script for persistence
+export PIP_CONFIG_FILE=~/mlperf_venv/pip.conf
+echo 'export PIP_CONFIG_FILE=~/mlperf_venv/pip.conf' >> ~/mlperf_venv/bin/activate
+
+# 4. Verify clean config
+pip config list
+
+# 5. Upgrade pip and install wheel first
+pip install --upgrade pip wheel setuptools
+
+# 6. PyTorch ecosystem (CPU)
+echo "Installing PyTorch (CPU)..."
+pip install torch==2.2.0+cpu torchvision==0.17.0+cpu torchaudio==2.2.0+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# 7. DLRM dependencies - download, rename, and install fbgemm_gpu wheel
+echo "Installing DLRM dependencies..."
+cd /tmp
+wget -q https://download.pytorch.org/whl/cpu/fbgemm_gpu-0.6.0%2Bcpu-cp311-cp311-manylinux2014_x86_64.whl
+mv fbgemm_gpu-0.6.0+cpu-cp311-cp311-manylinux2014_x86_64.whl fbgemm_gpu-0.6.0+cpu-cp311-cp311-linux_x86_64.whl
+pip install fbgemm_gpu-0.6.0+cpu-cp311-cp311-linux_x86_64.whl
+rm -f fbgemm_gpu-0.6.0+cpu-cp311-cp311-linux_x86_64.whl
+cd -
+
+pip install torchrec==0.6.0 torchsnapshot
+
+# 8. Common ML dependencies
+echo "Installing common ML dependencies..."
+pip install numpy scipy pybind11 pydot torchviz protobuf tqdm
+pip install scikit-learn
+
+# 9. Hugging Face stack
+echo "Installing Hugging Face stack..."
+pip install transformers==4.31.0 accelerate==0.21.0 sentencepiece==0.1.99
+
+# 10. NLP evaluation tools (LLaMA2/Mixtral)
+echo "Installing NLP evaluation tools..."
+pip install nltk==3.8.1 evaluate==0.4.0 absl-py==1.4.0 rouge-score==0.1.2
+
+# 11. Stable Diffusion specific
+echo "Installing Stable Diffusion dependencies..."
+pip install diffusers==0.30.3 open-clip-torch==2.26.1 opencv-python==4.10.0.84 pycocotools==2.0.7 "torchmetrics[image]==1.4.3"
+
+# 12. Mixtral specific
+echo "Installing Mixtral dependencies..."
+pip install git+https://github.com/amazon-science/mxeval.git@e09974f990eeaf0c0e8f2b5eaff4be66effb2c86
+
+echo "✓ Python environment setup complete"
+echo ""
+
+# ==============================================================================
+# Download Models and Datasets
+# ==============================================================================
 
 # Check if rclone is installed
 if ! command -v rclone &> /dev/null; then
@@ -117,19 +195,31 @@ fi
 echo "✓ DCSim hooks built successfully"
 echo ""
 
+# ==============================================================================
+# Build Loadgen
+# ==============================================================================
+echo "======================================================================"
+echo "Building loadgen..."
+echo "======================================================================"
+cd "${INFERENCE_DIR}/loadgen"
+pip install .
+echo "✓ Loadgen built successfully"
+echo ""
+
 # Create completion marker
 touch "${INFERENCE_DIR}/.mlperf_downloads_complete"
 
 echo "======================================================================"
-echo "MLPerf downloads complete!"
+echo "MLPerf setup complete!"
 echo "======================================================================"
 echo ""
 echo "Summary:"
+echo "  - Python venv:         ~/mlperf_venv/"
 echo "  - LLaMA2-70B:          ${INFERENCE_DIR}/language/llama2-70b/"
 echo "  - Mixtral-8x7B:        ${INFERENCE_DIR}/language/mixtral-8x7b/"
 echo "  - DLRM-v2:             ${INFERENCE_DIR}/recommendation/dlrm_v2/pytorch/"
 echo "  - Stable Diffusion XL: ${INFERENCE_DIR}/text_to_image/"
 echo "  - DCSim hooks:         ${INFERENCE_DIR}/dcsim_hooks/"
 echo ""
-echo "Total downloaded: ~300GB"
+echo "To activate the environment: source ~/mlperf_venv/bin/activate"
 echo ""
