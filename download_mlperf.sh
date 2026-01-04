@@ -24,13 +24,13 @@ source ~/mlperf_venv/bin/activate
 # 2. Create empty pip config to override Compute Canada's
 cat > ~/mlperf_venv/pip.conf << 'EOF'
 [global]
-find-links = 
+find-links =
 disable-pip-version-check = false
 
 [install]
-find-links = 
-constraint = 
-only-binary = 
+find-links =
+constraint =
+only-binary =
 prefer-binary = false
 EOF
 
@@ -43,6 +43,7 @@ pip config list
 
 # 5. Upgrade pip and install wheel first
 pip install --upgrade pip wheel setuptools
+pip install 'numpy<2'
 
 # 6. PyTorch ecosystem (CPU)
 echo "Installing PyTorch (CPU)..."
@@ -61,11 +62,17 @@ pip install torchrec==0.6.0 torchsnapshot
 
 # 8. Common ML dependencies
 echo "Installing common ML dependencies..."
-pip install numpy scipy pybind11 pydot torchviz protobuf tqdm
-pip install scikit-learn
+pip install numpy scipy pybind11 pydot torchviz protobuf tqdm iopath
+wget https://files.pythonhosted.org/packages/36/4d/4a67f30778a45d542bbea5db2dbfa1e9e100bf9ba64aefe34215ba9f11f6/scikit_learn-1.8.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+mv scikit_learn-1.8.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl scikit_learn-1.8.0-cp311-cp311-manylinux_2_27_x86_64.linux_x86_64.whl
+pip install scikit_learn-1.8.0-cp311-cp311-manylinux_2_27_x86_64.linux_x86_64.whl
 
 # 9. Hugging Face stack
 echo "Installing Hugging Face stack..."
+pip download tokenizers==0.13.3 --no-deps --platform manylinux_2_17_x86_64 --python-version 311 --implementation cp --abi cp311
+mv tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
+pip install tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
+rm -f tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
 pip install transformers==4.31.0 accelerate==0.21.0 sentencepiece==0.1.99
 
 # 10. NLP evaluation tools (LLaMA2/Mixtral)
@@ -74,11 +81,14 @@ pip install nltk==3.8.1 evaluate==0.4.0 absl-py==1.4.0 rouge-score==0.1.2
 
 # 11. Stable Diffusion specific
 echo "Installing Stable Diffusion dependencies..."
-pip install diffusers==0.30.3 open-clip-torch==2.26.1 opencv-python==4.10.0.84 pycocotools==2.0.7 "torchmetrics[image]==1.4.3"
+pip install diffusers==0.30.3 open-clip-torch==2.26.1 opencv-python==4.10.0.84 "torchmetrics[image]==1.4.3"
+pip install cython
+pip install pycocotools==2.0.7 --no-build-isolation
 
 # 12. Mixtral specific
 echo "Installing Mixtral dependencies..."
-pip install git+https://github.com/amazon-science/mxeval.git@e09974f990eeaf0c0e8f2b5eaff4be66effb2c86
+pip install git+https://github.com/amazon-science/mxeval.git@e09974f990eeaf0c0e8f2b5eaff4be66effb2c86 --no-deps
+pip install pyre-extensions
 
 echo "✓ Python environment setup complete"
 echo ""
