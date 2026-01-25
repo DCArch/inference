@@ -1,4 +1,21 @@
 import os
+
+# Monkey-patch safetensors to disable mmap for Lustre filesystem compatibility
+# Must be done BEFORE importing transformers
+import safetensors.torch
+_original_load_file = safetensors.torch.load_file
+
+def _load_file_no_mmap(filename, device="cpu"):
+    """Load safetensors file without mmap - reads entire file into memory."""
+    with open(filename, 'rb') as f:
+        data = f.read()
+    return safetensors.torch.load(data)
+
+safetensors.torch.load_file = _load_file_no_mmap
+
+import torch
+torch.set_num_threads(1)
+
 import time
 import numpy as np
 import array
@@ -403,6 +420,12 @@ class SUTServer(SUT):
             target=self.process_first_tokens)
         self.ft_response_thread.start()
 
+        # Model loaded, workers ready - activate simulation
+        log.info("DCSim: Starting simulation region (Mixtral MoE Server mode)")
+        dcsim_hooks.start_global_roi()
+        self.dcsim_hooks_active = True
+        log.info("DCSim: Simulation active")
+
     def process_first_tokens(self):
 
         while True:
@@ -479,6 +502,13 @@ class SUTServer(SUT):
         self.query_queue.put(query_samples[0])
 
     def stop(self):
+        # End simulation before cleanup
+        if self.dcsim_hooks_active:
+            log.info("DCSim: Ending simulation region (Mixtral MoE Server mode)")
+            dcsim_hooks.end_global_roi()
+            self.dcsim_hooks_active = False
+            log.info("DCSim: Simulation ended")
+
         for _ in range(self.num_workers):
             self.query_queue.put(None)
 

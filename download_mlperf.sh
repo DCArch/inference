@@ -69,11 +69,7 @@ pip install scikit_learn-1.8.0-cp311-cp311-manylinux_2_27_x86_64.linux_x86_64.wh
 
 # 9. Hugging Face stack
 echo "Installing Hugging Face stack..."
-pip download tokenizers==0.13.3 --no-deps --platform manylinux_2_17_x86_64 --python-version 311 --implementation cp --abi cp311
-mv tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
-pip install tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
-rm -f tokenizers-0.13.3-cp311-cp311-manylinux_2_17_x86_64.linux_x86_64.whl
-pip install transformers==4.31.0 accelerate==0.21.0 sentencepiece==0.1.99
+pip install transformers==4.46.2 accelerate==1.2.1 sentencepiece==0.2.0
 
 # 10. NLP evaluation tools (LLaMA2/Mixtral)
 echo "Installing NLP evaluation tools..."
@@ -136,10 +132,18 @@ echo ""
 echo "======================================================================"
 echo "1/4: Downloading LLaMA2-70B model and dataset..."
 echo "======================================================================"
-mkdir -p "${INFERENCE_DIR}/language/llama2-70b/model"
 mkdir -p "${INFERENCE_DIR}/language/llama2-70b/dataset"
-rclone copy mlc-inference:mlcommons-inference-wg-public/llama2-70b \
-    "${INFERENCE_DIR}/language/llama2-70b/model" -P --ignore-existing
+# Model requires HuggingFace access - clone using git lfs (requires prior approval from Meta)
+git lfs install
+if [ ! -d "${INFERENCE_DIR}/language/llama2-70b/model" ]; then
+    git clone git@hf.co:meta-llama/Llama-2-70b-chat-hf "${INFERENCE_DIR}/language/llama2-70b/model"
+else
+    echo "LLaMA2-70B model directory already exists, skipping clone"
+    # Pull LFS files if they're just pointers
+    cd "${INFERENCE_DIR}/language/llama2-70b/model"
+    git lfs pull
+    cd -
+fi
 rclone copy mlc-inference:mlcommons-inference-wg-public/open_orca \
     "${INFERENCE_DIR}/language/llama2-70b/dataset" -P --ignore-existing
 echo "✓ LLaMA2-70B complete"
@@ -153,7 +157,7 @@ mkdir -p "${INFERENCE_DIR}/language/mixtral-8x7b/model"
 mkdir -p "${INFERENCE_DIR}/language/mixtral-8x7b/dataset"
 rclone copy mlc-inference:mlcommons-inference-wg-public/mixtral_8x7b/mixtral-8x7b-instruct-v0.1 \
     "${INFERENCE_DIR}/language/mixtral-8x7b/model" -P --ignore-existing
-rclone copy mlc-inference:mlcommons-inference-wg-public/open_orca \
+rclone copy mlc-inference:mlcommons-inference-wg-public/mixtral_8x7b/09292024_mixtral_15k_mintoken2_v1.pkl \
     "${INFERENCE_DIR}/language/mixtral-8x7b/dataset" -P --ignore-existing
 echo "✓ Mixtral-8x7B complete"
 echo ""

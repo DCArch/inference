@@ -4,13 +4,9 @@ pytoch native backend for dlrm
 
 import os
 import torch
+torch.set_num_threads(1)
 import backend
 import numpy as np
-
-# DCSim hooks
-import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'dcsim_hooks'))
-import dcsim_hooks
 
 from torchrec import EmbeddingBagCollection
 from torchrec.models.dlrm import DLRM, DLRM_DCN, DLRMTrain
@@ -77,9 +73,6 @@ class BackendPytorchNative(backend.Backend):
             # os.environ["WORLD_SIZE"] = "8"
             self.device: torch.device = torch.device("cpu")
             self.dist_backend = "gloo"
-
-        # DCSim hook control
-        self.dcsim_hooks_active = False
 
     def version(self):
         return torch.__version__
@@ -153,25 +146,12 @@ class BackendPytorchNative(backend.Backend):
             #     print(k, v)
         self.model.eval()
 
-        # All models and embeddings loaded - activate simulation
         print("="*60)
-        print("DCSim: Embeddings and model loaded, starting simulation")
-        dcsim_hooks.start_global_roi()
-        self.dcsim_hooks_active = True
-        print("DCSim: Simulation active")
+        print("DCSim: Embeddings and model loaded")
+        print("DCSim: Waiting for dataset loading before starting simulation...")
         print("="*60)
 
         return self
-
-    def unload(self):
-        """Cleanup - end simulation"""
-        if self.dcsim_hooks_active:
-            print("="*60)
-            print("DCSim: Ending simulation region")
-            dcsim_hooks.end_global_roi()
-            self.dcsim_hooks_active = False
-            print("DCSim: Simulation ended")
-            print("="*60)
 
     def predict(self, samples, ids=None):
         outputs = []

@@ -377,15 +377,14 @@ class MultihotCriteoPipe:
             dtype == "int32"
         ), f"sparse multi-hot dtype is {dtype} but should be int32"
         offset = zf.fp.tell()
-        # create memmap
-        return np.memmap(
-            zf.filename,
-            dtype=dtype,
-            shape=shape,
-            order="F" if fortran_order else "C",
-            mode="r",
-            offset=offset,
-        )
+        # Load data directly into memory instead of using memmap
+        # (memmap hangs on Lustre parallel filesystems)
+        order = "F" if fortran_order else "C"
+        arr = np.empty(shape, dtype=dtype, order=order)
+        with open(zf.filename, 'rb') as f:
+            f.seek(offset)
+            f.readinto(arr.data)
+        return arr
 
     def _np_arrays_to_batch(
         self,

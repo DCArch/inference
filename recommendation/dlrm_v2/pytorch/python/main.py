@@ -23,6 +23,9 @@ import numpy as np
 import dataset
 import multihot_criteo
 
+# DCSim hooks
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'dcsim_hooks'))
+import dcsim_hooks
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("main")
@@ -38,19 +41,19 @@ SUPPORTED_DATASETS = {
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": True},
+        {"randomize": "total", "memory_map": False},
     ),
     "multihot-criteo-sample": (
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": True},
+        {"randomize": "total", "memory_map": False},
     ),
     "multihot-criteo": (
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": True},
+        {"randomize": "total", "memory_map": False},
     ),
 }
 
@@ -805,7 +808,22 @@ def main():
         "roc_auc": 0,
         "scenario": str(scenario)}
     runner.start_run(result_dict, args.accuracy)
+
+    # Start DCSim simulation region
+    print("=" * 60)
+    print("DCSim: Starting simulation (before lg.StartTest)")
+    dcsim_hooks.start_global_roi()
+    print("DCSim: Simulation active")
+    print("=" * 60)
+
     lg.StartTest(sut, qsl, settings)
+
+    # End DCSim simulation region
+    print("=" * 60)
+    print("DCSim: Ending simulation (after lg.StartTest)")
+    dcsim_hooks.end_global_roi()
+    print("DCSim: Simulation ended")
+    print("=" * 60)
 
     result_dict["good"] = runner.post_process.good
     result_dict["total"] = runner.post_process.total
