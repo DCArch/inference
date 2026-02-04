@@ -491,6 +491,9 @@ def main():
     result_dict = {"scenario": str(scenario)}
     runner.start_run(result_dict, args.accuracy)
 
+    # Start DCSim simulation after all loading and warmup is complete
+    backend.start_simulation()
+
     lg.StartTestWithLogSettings(sut, qsl, settings, log_settings, audit_config)
 
     if args.accuracy:

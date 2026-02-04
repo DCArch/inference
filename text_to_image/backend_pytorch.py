@@ -131,15 +131,21 @@ class BackendPytorch(backend.Backend):
             return_tensors="pt",
         )
 
-        # All models loaded - activate simulation
         log.info("="*60)
-        log.info("DCSim: All models loaded (UNet, encoders, VAE), starting simulation")
+        log.info("DCSim: All models loaded (UNet, encoders, VAE)")
+        log.info("DCSim: Waiting for dataset loading and warmup before starting simulation...")
+        log.info("="*60)
+
+        return self
+
+    def start_simulation(self):
+        """Activate DCSim simulation region - call after dataset load and warmup"""
+        log.info("="*60)
+        log.info("DCSim: Starting simulation")
         dcsim_hooks.start_global_roi()
         self.dcsim_hooks_active = True
         log.info("DCSim: Simulation active")
         log.info("="*60)
-
-        return self
 
     def unload(self):
         """Cleanup - end simulation"""

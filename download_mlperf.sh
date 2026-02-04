@@ -83,7 +83,17 @@ pip install pycocotools==2.0.7 --no-build-isolation
 
 # 12. Mixtral specific
 echo "Installing Mixtral dependencies..."
-pip install git+https://github.com/amazon-science/mxeval.git@e09974f990eeaf0c0e8f2b5eaff4be66effb2c86 --no-deps
+# mxeval has broken entry points, clone and fix before installing
+cd /tmp
+rm -rf mxeval
+git clone https://github.com/amazon-science/mxeval.git
+cd mxeval
+git checkout e09974f990eeaf0c0e8f2b5eaff4be66effb2c86
+# Remove broken entry_points from setup.py
+sed -i '/entry_points/,/}/d' setup.py
+pip install . --no-deps
+cd -
+rm -rf /tmp/mxeval
 pip install pyre-extensions
 
 echo "✓ Python environment setup complete"
