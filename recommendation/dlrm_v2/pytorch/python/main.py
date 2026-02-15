@@ -41,19 +41,19 @@ SUPPORTED_DATASETS = {
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": False},
+        {"randomize": "total", "memory_map": True},
     ),
     "multihot-criteo-sample": (
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": False},
+        {"randomize": "total", "memory_map": True},
     ),
     "multihot-criteo": (
         multihot_criteo.MultihotCriteo,
         multihot_criteo.pre_process_criteo_dlrm,
         multihot_criteo.DlrmPostProcess(),
-        {"randomize": "total", "memory_map": False},
+        {"randomize": "total", "memory_map": True},
     ),
 }
 

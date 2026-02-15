@@ -1,25 +1,9 @@
 import os
-
-# Monkey-patch safetensors to disable mmap for Lustre filesystem compatibility
-# Must be done BEFORE importing transformers
-import safetensors.torch
-_original_load_file = safetensors.torch.load_file
-
-def _load_file_no_mmap(filename, device="cpu"):
-    """Load safetensors file without mmap - reads entire file into memory."""
-    with open(filename, 'rb') as f:
-        data = f.read()
-    return safetensors.torch.load(data)
-
-safetensors.torch.load_file = _load_file_no_mmap
-
-import torch
-torch.set_num_threads(1)
-
 import time
 import numpy as np
 import array
 import torch
+torch.set_num_threads(1)
 from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from transformers import (
