@@ -1,7 +1,7 @@
 from typing import Optional, List, Union
 import os
 import torch
-torch.set_num_threads(1)
+torch.set_num_threads(64)
 import logging
 import backend
 from diffusers import StableDiffusionXLPipeline
@@ -409,6 +409,9 @@ class BackendPytorch(backend.Backend):
     def predict(self, inputs):
         images = []
         with torch.no_grad():
+            if not self.dcsim_hooks_active:
+                self.start_simulation()
+
             for i in range(0, len(inputs), self.batch_size):
                 latents_input = [
                     inputs[idx]["latents"]

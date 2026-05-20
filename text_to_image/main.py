@@ -169,6 +169,12 @@ def get_args():
         type=int,
         help="mlperf multi-stream samples per query",
     )
+    parser.add_argument(
+        "--warmup-iterations",
+        default=5,
+        type=int,
+        help="number of warmup iterations (0 to disable)",
+    )
     args = parser.parse_args()
 
     # don't use defaults in argparser. Instead we default to a dict, override that with a profile
@@ -403,8 +409,7 @@ def main():
     #
     count = ds.get_item_count()
 
-    if os.environ.get('FORCE_NO_WARMUP', '').lower() not in [
-            "yes", "true", "1"]:
+    if args.warmup_iterations > 0:
         # warmup
         syntetic_str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit"
         latents_pt = torch.rand(ds.latents.shape, dtype=dtype).to(args.device)
@@ -416,7 +421,7 @@ def main():
             }
             for _ in range(args.max_batchsize)
         ]
-        for i in range(5):
+        for i in range(args.warmup_iterations):
             _ = backend.predict(warmup_samples)
 
     scenario = SCENARIO_MAP[args.scenario]
@@ -430,7 +435,12 @@ def main():
         model, ds, args.threads, post_proc=post_proc, max_batchsize=args.max_batchsize
     )
 
+    dcsim_roi_started = [False]
+
     def issue_queries(query_samples):
+        if not dcsim_roi_started[0]:
+            backend.start_simulation()
+            dcsim_roi_started[0] = True
         runner.enqueue(query_samples)
 
     def flush_queries():
@@ -490,9 +500,6 @@ def main():
     log.info("starting {}".format(scenario))
     result_dict = {"scenario": str(scenario)}
     runner.start_run(result_dict, args.accuracy)
-
-    # Start DCSim simulation after all loading and warmup is complete
-    backend.start_simulation()
 
     lg.StartTestWithLogSettings(sut, qsl, settings, log_settings, audit_config)
 

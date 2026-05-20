@@ -1,9 +1,25 @@
 import os
+
+# Monkey-patch safetensors to disable mmap for Lustre filesystem compatibility
+# Must be done BEFORE importing transformers
+import safetensors.torch
+_original_load_file = safetensors.torch.load_file
+
+def _load_file_no_mmap(filename, device="cpu"):
+    """Load safetensors file without mmap - reads entire file into memory."""
+    with open(filename, 'rb') as f:
+        data = f.read()
+    return safetensors.torch.load(data)
+
+safetensors.torch.load_file = _load_file_no_mmap
+
+import torch
+torch.set_num_threads(64)
+
 import time
 import numpy as np
 import array
 import torch
-torch.set_num_threads(1)
 from torch.nn.functional import pad
 from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer, LlamaForCausalLM
@@ -160,12 +176,6 @@ class SUT:
             worker.start()
             self.worker_threads[j] = worker
 
-        # Model loaded, workers ready - activate simulation
-        log.info("DCSim: Starting simulation region")
-        dcsim_hooks.start_global_roi()
-        self.dcsim_hooks_active = True
-        log.info("DCSim: Simulation active")
-
     def stop(self):
         # End simulation before cleanup
         if self.dcsim_hooks_active:
@@ -246,6 +256,12 @@ class SUT:
                 assert input_ids_tensor.shape[0] <= self.batch_size
 
                 tik2 = time.time()
+
+                if not self.dcsim_hooks_active:
+                    log.info("DCSim: Starting simulation region")
+                    dcsim_hooks.start_global_roi()
+                    self.dcsim_hooks_active = True
+                    log.info("DCSim: Simulation active")
 
                 pred_output_tokens = self.model.generate(
                     input_ids=input_ids_tensor,
@@ -384,12 +400,6 @@ class SUTServer(SUT):
             target=self.process_first_tokens)
         self.ft_response_thread.start()
 
-        # Model loaded, workers ready - activate simulation
-        log.info("DCSim: Starting simulation region (Server mode)")
-        dcsim_hooks.start_global_roi()
-        self.dcsim_hooks_active = True
-        log.info("DCSim: Simulation active")
-
     def process_first_tokens(self):
 
         while True:
@@ -428,6 +438,12 @@ class SUTServer(SUT):
                 is_first_token=True,
                 response_ids=[qitem.id],
             )
+
+            if not self.dcsim_hooks_active:
+                log.info("DCSim: Starting simulation region (Server mode)")
+                dcsim_hooks.start_global_roi()
+                self.dcsim_hooks_active = True
+                log.info("DCSim: Simulation active")
 
             _ = self.model.generate(
                 input_ids=input_ids_tensor,

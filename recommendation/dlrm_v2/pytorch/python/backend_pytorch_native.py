@@ -4,7 +4,7 @@ pytoch native backend for dlrm
 
 import os
 import torch
-torch.set_num_threads(1)
+torch.set_num_threads(64)
 import backend
 import numpy as np
 

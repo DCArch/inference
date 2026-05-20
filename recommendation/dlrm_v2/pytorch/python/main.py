@@ -469,6 +469,7 @@ class RunnerBase:
         self.threads = threads
         self.max_batchsize = max_batchsize
         self.result_timing = []
+        self.dcsim_roi_started = False
 
     def handle_tasks(self, tasks_queue):
         pass
@@ -482,6 +483,13 @@ class RunnerBase:
     def run_one_item(self, qitem):
         # run the prediction
         processed_results = []
+        if not self.dcsim_roi_started:
+            print("=" * 60)
+            print("DCSim: Starting simulation (first inference)")
+            dcsim_hooks.start_global_roi()
+            self.dcsim_roi_started = True
+            print("DCSim: Simulation active")
+            print("=" * 60)
         try:
             results = self.model.predict(qitem.features, qitem.content_id)
             processed_results = self.post_process(
@@ -809,21 +817,15 @@ def main():
         "scenario": str(scenario)}
     runner.start_run(result_dict, args.accuracy)
 
-    # Start DCSim simulation region
-    print("=" * 60)
-    print("DCSim: Starting simulation (before lg.StartTest)")
-    dcsim_hooks.start_global_roi()
-    print("DCSim: Simulation active")
-    print("=" * 60)
-
     lg.StartTest(sut, qsl, settings)
 
     # End DCSim simulation region
-    print("=" * 60)
-    print("DCSim: Ending simulation (after lg.StartTest)")
-    dcsim_hooks.end_global_roi()
-    print("DCSim: Simulation ended")
-    print("=" * 60)
+    if runner.dcsim_roi_started:
+        print("=" * 60)
+        print("DCSim: Ending simulation (after lg.StartTest)")
+        dcsim_hooks.end_global_roi()
+        print("DCSim: Simulation ended")
+        print("=" * 60)
 
     result_dict["good"] = runner.post_process.good
     result_dict["total"] = runner.post_process.total
